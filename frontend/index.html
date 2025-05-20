@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal Cloud Storage</title>
+
+  <!-- ----------  Styles  ---------- -->
+  <style>
+    /* ---------- Page background: soft sky-blue ? deep-blue gradient ---------- */
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(180deg, #8ec5fc 0%, #6e9ffb 40%, #1e3c72 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #fff;
+      overflow-x: hidden;        /* hide cloud overflows */
+    }
+
+    /* ---------- Animated clouds ---------- */
+    .cloud {
+      background: #ffffffaa;
+      border-radius: 50px;
+      position: absolute;
+      animation: float 50s linear infinite;
+      pointer-events: none;
+    }
+    .cloud.x1 { width: 200px; height: 60px; top: 10vh; left: -220px; animation-duration: 55s; }
+    .cloud.x2 { width: 130px; height: 40px; top: 30vh; left: -150px; animation-duration: 42s; animation-delay: -10s;}
+    .cloud.x3 { width: 180px; height: 50px; top: 55vh; left: -200px; animation-duration: 60s; animation-delay: -25s;}
+    .cloud.x4 { width: 150px; height: 70px; top: 75vh; left: -250px; animation-duration: 120s; animation-delay: -30s;}
+    .cloud.x5 { width: 110px; height: 90px; top: 95vh; left: -300px; animation-duration: 80s; animation-delay: -35s;}
+    @keyframes float {
+      0%   { transform: translateX(0);   }
+      100% { transform: translateX(120vw);}
+    }
+
+    /* ---------- Layout containers ---------- */
+    .wrapper { width: min(800px, 90%); z-index: 1; }
+
+    h1 {
+      text-align: center;
+      margin: 2rem 0 1rem;
+      letter-spacing: 1px;
+      font-weight: 600;
+      text-shadow: 0 2px 4px #0005;
+    }
+
+    /* ---------- Upload panel ---------- */
+    .upload-box {
+      background: #ffffff0d;
+      border: 1px solid #ffffff33;
+      border-radius: 12px;
+      padding: 1.5rem;
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+    #fileInput {
+      flex: 1 1 260px;
+    }
+    .btn {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.15s ease;
+      background: #ffce3d;
+      color: #1e1e1e;
+      box-shadow: 0 4px 6px #0003;
+    }
+    .btn:hover   { transform: translateY(-2px); }
+    .btn:active  { transform: translateY( 0px); }
+
+    /* ---------- Table styling ---------- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-block: 1.8rem 3rem;
+      background: #ffffff0d;
+      border: 1px solid #ffffff33;
+      backdrop-filter: blur(4px);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    thead { background: #ffffff14; }
+    th, td {
+      padding: 0.75rem 0.9rem;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+    tbody tr:nth-child(odd) { background: #ffffff08; }
+    tbody tr:hover { background: #ffffff1f; }
+  </style>
+</head>
+
+<body>
+  <!-- Floating clouds -->
+  <div class="cloud x1"></div>
+  <div class="cloud x2"></div>
+  <div class="cloud x3"></div>
+  <div class="cloud x4"></div>
+  <div class="cloud x5"></div>
+
+  <div class="wrapper">
+    <h1>Personal Cloud Storage</h1>
+
+
+    <!-- Upload Panel -->
+    <div class="upload-box">
+     <input type="file" id="fileInput" hidden onchange="showFilename()" />
+     <button class="btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+     <span id="fileName" style="color: #fff; font-size: 0.95rem; min-width: 120px;">No file selected</span>
+     <button class="btn" onclick="uploadFile()">Upload</button>
+    </div>
+
+
+    <!-- File list -->
+    <table id="filesTable">
+      <thead>
+        <tr>
+          <th>Filename</th>
+          <th>MIME&nbsp;Type</th>
+          <th>Size&nbsp;(bytes)</th>
+          <th>Uploaded&nbsp;At</th>
+          <th>Actions</th> 
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- ----------  Script  ---------- -->
+  <script>
+  const backendUrl = "http://54.174.155.130:3000"; 
+  
+  // ?? Add this function to convert bytes to KB/MB
+  function formatSize(bytes) {
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' MB';
+    if (bytes >= 1024)    return (bytes / 1024).toFixed(2) + ' KB';
+    return bytes + ' B';
+  }
+
+  // ?? Add this function to format timestamp
+  function formatDate(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString(); // e.g., "5/20/2025, 2:45:30 PM"
+  }
+
+
+    /* Upload a file -------------------------------------------------------- */
+    async function uploadFile() {
+      const input = document.getElementById('fileInput');
+      const file = input.files[0];
+      if (!file) { alert('Choose a file first!'); return; }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res  = await fetch(`${backendUrl}/upload`, { method: 'POST', body: formData });
+        const text = await res.text();
+        alert(text);
+        loadFiles();                     // refresh table
+        input.value = '';                // clear choose-file field
+      } catch (err) {
+        alert('Upload error: ' + err);
+      }
+    }
+    
+    /* Show File Name ---------------------------------------------------------*/
+    
+    function showFilename() {
+  const fileInput = document.getElementById('fileInput');
+  const fileNameDisplay = document.getElementById('fileName');
+  fileNameDisplay.textContent = fileInput.files[0]?.name || 'No file selected';
+}
+
+  /* Delete Files-----------------------------------------------------------*/
+  
+  async function deleteFile(fileId) {
+  if (!confirm('Are you sure you want to delete this file?')) return;
+
+  try {
+    const res = await fetch(`${backendUrl}/files/${fileId}`, {
+      method: 'DELETE',
+    });
+
+    if (res.ok) {
+      alert('File deleted successfully');
+      loadFiles(); // refresh the table
+    } else {
+      const errMsg = await res.text();
+      alert('Failed to delete file: ' + errMsg);
+    }
+  } catch (err) {
+    alert('Error deleting file: ' + err.message);
+  }
+}
+
+
+    /* Fetch metadata & build table ---------------------------------------- */
+   async function loadFiles() {
+    try {
+      const res   = await fetch(`${backendUrl}/files`);
+      const files = await res.json();
+      const tbody = document.querySelector('#filesTable tbody');
+      tbody.innerHTML = '';
+
+      files.forEach(f => {
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr>
+            <td><a href="${f.s3_url}" target="_blank" style="color: #ffd700; text-decoration: underline;">${f.filename}</a></td>
+            <td>${f.mimetype}</td>
+            <td>${formatSize(f.size)}</td>
+            <td>${formatDate(f.upload_date || f.uploaded_at)}</td>
+            <td><button class="btn" style="background:#f44336; color:#fff;" onclick="deleteFile(${f.id})">Delete</button></td>
+          </tr>
+        `);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+    async function deleteFile(id) {
+    if (!confirm('Are you sure you want to delete this file?')) return;
+
+    try {
+      const res = await fetch(`${backendUrl}/delete/${id}`, { method: 'DELETE' });
+      const text = await res.text();
+      alert(text);
+      loadFiles();
+    } catch (err) {
+      alert('Delete error: ' + err);
+    }
+  }
+
+
+    window.onload = loadFiles;
+  </script>
+</body>
+</html>
